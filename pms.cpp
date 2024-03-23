@@ -1,3 +1,16 @@
+// Faculty: BUT FIT 
+// Course: PRL 
+// Project Name: Pipeline Merge Sort  
+// Name: Jakub Kuznik
+// Login: xkuzni04
+// Year: 2024
+
+/* Pipline Merge sort process scheme, where each process has 
+input and output fronts 
+         ------   -----  ...  ------
+---- P1        P2        ...      Pn -----
+         ------   -----  ...  ------
+*/
 
 #include <iostream>
 #include <fstream>
@@ -5,26 +18,28 @@
 #include "mpi.h"
 
 #define FILENUMS "numbers"
+#define UP 1
+#define DOWN 2 
 
 using namespace std;
 
 
-/* Pipline Merge sort process scheme, where each process has 
-input and output fronts 
-            ------   ---    ...   ---
--------- P1        P2       ...    Pn --------- 
-            ------   ---    ...   ---
-*/
 
 /**
- * @brief This is the first process that will read the 
+ * This is the first process that will read the 
  * random numbers from the file FILENUMS. The process 
  * will then put the value alternately to two output fronts 
  */
 void first_proces(){
     
-    std::queue<uint8_t>* first_queue = new std::queue<uint8_t>();
-
+    // send Buffer that will be used to send number to the p2 
+    uint8_t sBuff;
+    // input queue 
+    std::queue<uint8_t>* q1 = new std::queue<uint8_t>();
+    // get my rank 
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    
     std::cout << "I am FIRST " << std::endl;
 
     // Open the file     
@@ -35,13 +50,36 @@ void first_proces(){
         std::cerr << "Error opening file numbers" << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
-
+    
+    // parse the input numbers into the queue 
     char c;
     while (file.get(c)) {
         uint8_t val = static_cast<uint8_t>(c);
+        q1->push(val);
         cout << static_cast<int>(val) << endl;
     }
+
+    file.close();
+
+    // p1 brain while there is number send it to the p2 
+    while (){
+        // tag 1 q1 
+        // tag 2 q2 
+        MPI_Send(^)
+    }
+
+    // after everything sent speciall signal to shut down everyone
+
+    /**
+    MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), UP, MPI_COMM_WORLD);
+    MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), DOWN, MPI_COMM_WORLD);
     
+    MPI_Status status;
+    MPI_Recv(&rcBuff, 1, MPI_BYTE, rank, UP, MPI_COMM_WORLD, &status);
+    */
+
+    delete q1;
+    return;    
 }
 
 void nth_proces() {
