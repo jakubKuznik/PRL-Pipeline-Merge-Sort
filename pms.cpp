@@ -96,6 +96,7 @@ void first_proces(){
  */
 void nth_proces() {
     
+    // last process does not use them  
     std::queue<uint8_t> q_up; 
     std::queue<uint8_t> q_down; 
 
@@ -110,29 +111,27 @@ void nth_proces() {
     int condition  = pow(2, (rank-1));
 
     // how many numbers are there in total  
-    int total_nums      = 0; 
+    int total_nums      = 0;
+    // count how many numbers did this procces accept  
     int accepted_nums   = 0;
 
     MPI_Status status;
-
-    
+    // wait till you know total numbers 
     MPI_Bcast(&total_nums, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     // met the input condition 
     for (int i = 0; i < condition; i++){
         MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
-        q_up.push(rcBuff);
-        accepted_nums++;
+        q_up.push(rcBuff);accepted_nums++;
     }
     
     MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
-    q_down.push(rcBuff);
-    accepted_nums++;
-    bool last_rc = LAST_DOWN; 
-    
+    q_down.push(rcBuff); accepted_nums++;
     
     int send = 0;
     int ups = pow (2, (rank-1));
+
+    // remeber if you are doing UP UP or DOWN DOWN 
     char last = LAST_UP;
     int up_taken = 0;
     int can_take_up = false;
@@ -140,6 +139,7 @@ void nth_proces() {
     int help = 0;
     bool oneEmpty = false;
 
+    // Each iteration accept number and send number 
     for (int i = 0; true; i++){
         // last process is prinitng the output 
         if (accepted_nums == total_nums){
@@ -147,20 +147,12 @@ void nth_proces() {
                 break;
             }
         }
-        else { // RECIEVE 
+        // RECIEVE numbers -- 
+        //  first proces UP DOWN UP DONW 
+        //  second UP UP DOWN DOWN ...  
+        else { 
             if (accepted_nums < total_nums){
-                // speciall case for the first process 
-                if (rank == 1){
-                    if ((accepted_nums % 2) == 0){ 
-                        MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
-                        accepted_nums++; q_up.push(rcBuff);
-                    }
-                    else {
-                        MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
-                        accepted_nums++; q_down.push(rcBuff);
-                    }
-                }
-                else if (((accepted_nums / condition) % 2) == 0){ // take n up then n down 
+                if (((accepted_nums / condition) % 2) == 0){ // take n up then n down 
                     MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
                     accepted_nums++; q_up.push(rcBuff);
                 }
@@ -170,7 +162,8 @@ void nth_proces() {
                 }
             }
         }
-
+        
+        // First ups number takes from whenewer 
         if (send < ups){
             // choose the smaller and remeber which front it was from
             if (q_up.empty()){
@@ -204,6 +197,8 @@ void nth_proces() {
                 }
             }
         }
+        // second ups number you have to fill so it will ad up to taking same from
+        //  both queue 
         else if (send < (ups * 2)){
             help = abs(up_taken);
 
@@ -282,6 +277,7 @@ void nth_proces() {
                 }
             }
         }
+        // reset the counterss etc 
         else {
             if (last == LAST_UP){
                 last = LAST_DOWN;
@@ -291,11 +287,9 @@ void nth_proces() {
             }
             send = 0;
             up_taken = 0;
-            continue;
         } 
     }
 }
-
 
 int main(int argc, char *argv[]) {
 
