@@ -119,17 +119,14 @@ void nth_proces() {
 
     for (int i = 0; condition_met == false; i++){
         if (i % 2 == 0){
-            cout << "I am " << rank << " AND I AM WAITING ON UP" << endl;
             MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
             q_up.push(rcBuff);
             accepted_nums++;
-            cout << "I am " << rank << " And if got UP num" << endl;
         }
         else{
             MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
             q_down.push(rcBuff);
             accepted_nums++;
-            cout << "I am " << rank << " And if got down num" << endl;
         }
 
         if (!q_down.empty() && (q_up.front() >= condition)){
@@ -138,7 +135,6 @@ void nth_proces() {
         }
     }
     
-
     int send = 0;
     int ups = pow (2, (rank-1));
     char last = LAST_UP;
@@ -148,21 +144,38 @@ void nth_proces() {
     int help = 0;
     bool oneEmpty = false; 
     for (int i = 0; true; i++){
-        
-        
         // last process is prinitng the output 
         if (accepted_nums == total_nums){
+            cout << "I am " << rank << " ITERATION 2/2 ALL NUMS " << endl;
             if (q_up.empty() && q_down.empty()){
                 cout << "I am " << rank << " ENDING " << endl;
                 break;
             }
         }
-        else if (q_up.empty() && q_down.empty()){
+        else { // RECIEVE 
+            if (accepted_nums < total_nums){
+                if (i % 2 == 0){
+                    MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
+                    accepted_nums++; q_up.push(rcBuff);
+                }
+                else {
+                    MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
+                    accepted_nums++; q_down.push(rcBuff);
+                }
+            }
         }
 
         if (send < ups){
             // choose the smaller and remeber which front it was from
-            if (q_up.front() < q_down.front()){
+            if (q_up.empty()){
+                sBuff = q_down.front(); q_down.pop(); 
+                up_taken--;
+            }
+            else if (q_down.empty()){
+                sBuff = q_up.front(); q_up.pop(); 
+                up_taken++;
+            }
+            else if (q_up.front() < q_down.front()){
                 sBuff = q_up.front(); q_up.pop(); 
                 up_taken++;
             }
@@ -260,10 +273,10 @@ void nth_proces() {
 
             if (oneEmpty == false){
                 // IF I AM THE LAST PROCESS     
+                send++;
                 if (rank == size-1){
                     cout << "I AM LAST, THIS IS RESULT: " << endl;
                     cout << static_cast<int>(sBuff) << endl;
-                    send++;
                 }
                 else{ // else send to next process 
                     if (last == LAST_UP){
@@ -276,11 +289,7 @@ void nth_proces() {
                         << static_cast<int>(sBuff) << " DOWN to: " << rank+1 << endl;
                         MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), DOWN, MPI_COMM_WORLD);
                     }
-                    send++;
                 }
-            }
-            else{
-                goto getNum;
             }
         }
         else {
@@ -294,28 +303,7 @@ void nth_proces() {
             up_taken = 0;
             continue;
         } 
-getNum:
-        if (accepted_nums < total_nums){
-            // RECIEVE 
-            if (i % 2 == 0){
-                MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
-                cout << "I am " << rank << " AND I AM WAITING ON UP" << endl;
-                accepted_nums++;
-                q_up.push(rcBuff);
-            }
-            else {
-                MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
-                cout << "I am " << rank << " And if got down num" << endl;
-                accepted_nums++;
-                q_down.push(rcBuff);
-            }
-
-        }
-
-
     }
-
-    
 }
 
 
