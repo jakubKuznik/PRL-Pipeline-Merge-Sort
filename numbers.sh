@@ -21,4 +21,5 @@ dd if=/dev/random bs=1 count=$numbers of=numbers 2> /dev/null
 
 mpirun --prefix /usr/local/share/OpenMPI -np $proc pms 				
 
-#rm -f pms numbers					
+rm -f pms numbers					
+
