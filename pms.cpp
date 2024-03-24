@@ -112,7 +112,6 @@ void nth_proces() {
     int rank, size;
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
     
     // Condition for the UPPER front to start the process 
     int condition  = pow(2, (rank-1));
@@ -120,9 +119,6 @@ void nth_proces() {
     // how many numbers are there in total  
     int total_nums      = 0; 
     int accepted_nums   = 0;
-
-    // Monitor which front should we recieve number from  
-    int up_recieved = 0;
 
     MPI_Status status;
 
@@ -135,13 +131,14 @@ void nth_proces() {
         MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
         q_up.push(rcBuff);
         accepted_nums++;
-        up_recieved++; 
+        cout << "I am " << rank << " RECIEVED UP " << endl;
     }
     
     MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
+    cout << "I am " << rank << " RECIEVED DOWN " << endl;
     q_down.push(rcBuff);
     accepted_nums++;
-    up_recieved--; 
+    bool last_rc = LAST_DOWN; 
     
     cout << "I am " << rank << " And i'v MET A CONDITION" << endl;
     
@@ -152,13 +149,13 @@ void nth_proces() {
     int can_take_up = false;
     int can_take_down = false; 
     int help = 0;
-    bool oneEmpty = false; 
+    bool oneEmpty = false;
 
     for (int i = 0; true; i++){
+        cout << "I am " << rank << " ACCEPTED " << accepted_nums << 
+        " TOTAL NUMS " << total_nums << endl;
         // last process is prinitng the output 
-        cout << "I am " << rank << " ITERATION 1/2 " << endl;
         if (accepted_nums == total_nums){
-            cout << "I am " << rank << " ITERATION 2/2 ALL NUMS " << endl;
             if (q_up.empty() && q_down.empty()){
                 cout << "I am " << rank << " ENDING " << endl;
                 break;
@@ -166,16 +163,32 @@ void nth_proces() {
         }
         else { // RECIEVE 
             if (accepted_nums < total_nums){
-                cout << "I am " << rank << " ITERATION 2/2 " << endl;
-                if (up_recieved == 0){
+                // speciall case for the first process 
+                if (rank == 1){
+                    if ((accepted_nums % 2) == 0){ 
+                        cout << "I am " << rank << " WAITING RECIEVED UP " << endl;
+                        MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
+                        accepted_nums++; q_up.push(rcBuff);
+                        cout << "I am " << rank << " RECIEVED UP " << endl;
+                    }
+                    else {
+                        cout << "I am " << rank << " WAITING RECIEVED DOWN " << endl;
+                        MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
+                        accepted_nums++; q_down.push(rcBuff);
+                        cout << "I am " << rank << " RECIEVED DOWN " << endl;
+                    }
+                }
+                else if (((accepted_nums / condition) % 2) == 0){ // take n up then n down 
+                        cout << "I am " << rank << " WAITING RECIEVED UP " << endl;
                     MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
                     accepted_nums++; q_up.push(rcBuff);
-                    up_recieved++;
+                    cout << "I am " << rank << " RECIEVED UP " << endl;
                 }
                 else {
+                    cout << "I am " << rank << " WAITING RECIEVED DOWN " << endl;
                     MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
                     accepted_nums++; q_down.push(rcBuff);
-                    up_recieved--; 
+                    cout << "I am " << rank << " RECIEVED DOWN " << endl;
                 }
             }
         }

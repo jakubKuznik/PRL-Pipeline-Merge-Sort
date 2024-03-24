@@ -19,7 +19,7 @@ mpic++ --prefix /usr/local/share/OpenMPI -o pms pms.cpp
 # Generate file with random nums  
 dd if=/dev/random bs=1 count=$numbers of=numbers 2> /dev/null	 
 
-mpirun --prefix /usr/local/share/OpenMPI -np $proc pms 				
+mpirun --prefix /usr/local/share/OpenMPI -np $proc --oversubscribe pms 				
 
 rm -f pms numbers					
 
