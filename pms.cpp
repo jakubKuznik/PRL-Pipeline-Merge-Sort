@@ -133,33 +133,28 @@ void nth_proces() {
 
     // remeber if you are doing UP UP or DOWN DOWN 
     char last = LAST_UP;
-    int up_taken = 0;
+    // if the num is 0 you have take same amount from UP and DOWN 
+    int up_taken = 0; 
     int can_take_up = false;
     int can_take_down = false; 
     int help = 0;
     bool oneEmpty = false;
 
     // Each iteration accept number and send number 
-    for (int i = 0; true; i++){
-        // last process is prinitng the output 
-        if (accepted_nums == total_nums){
-            if (q_up.empty() && q_down.empty()){
-                break;
-            }
-        }
+    while (!(accepted_nums == total_nums && q_up.empty() && q_down.empty())) {
+        oneEmpty = false; // if one of queue is empty 
+        
         // RECIEVE numbers -- 
         //  first proces UP DOWN UP DONW 
         //  second UP UP DOWN DOWN ...  
-        else { 
-            if (accepted_nums < total_nums){
-                if (((accepted_nums / condition) % 2) == 0){ // take n up then n down 
-                    MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
-                    accepted_nums++; q_up.push(rcBuff);
-                }
-                else {
-                    MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
-                    accepted_nums++; q_down.push(rcBuff);
-                }
+        if (accepted_nums < total_nums){
+            if (((accepted_nums / condition) % 2) == 0){ // take n up then n down 
+                MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
+                accepted_nums++; q_up.push(rcBuff);
+            }
+            else {
+                MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
+                accepted_nums++; q_down.push(rcBuff);
             }
         }
         
@@ -167,20 +162,16 @@ void nth_proces() {
         if (send < ups){
             // choose the smaller and remeber which front it was from
             if (q_up.empty()){
-                sBuff = q_down.front(); q_down.pop(); 
-                up_taken--;
+                sBuff = q_down.front(); q_down.pop(); up_taken--;
             }
             else if (q_down.empty()){
-                sBuff = q_up.front(); q_up.pop(); 
-                up_taken++;
+                sBuff = q_up.front(); q_up.pop(); up_taken++;
             }
             else if (q_up.front() < q_down.front()){
-                sBuff = q_up.front(); q_up.pop(); 
-                up_taken++;
+                sBuff = q_up.front(); q_up.pop(); up_taken++;
             }
             else{
-                sBuff = q_down.front(); q_down.pop(); 
-                up_taken--;
+                sBuff = q_down.front(); q_down.pop(); up_taken--;
             }
 
             send++;
@@ -222,33 +213,25 @@ void nth_proces() {
                     can_take_down = false; can_take_up = true; 
                 }
             }
-            
-            oneEmpty = false; 
-            
             if ((can_take_down == true) && (can_take_up == true)){
                 if (q_up.empty()){
-                    sBuff = q_down.front(); q_down.pop();
-                    up_taken--;
+                    sBuff = q_down.front(); q_down.pop(); up_taken--;
                 }
                 else if (q_down.empty()){
-                    sBuff = q_up.front(); q_up.pop();
-                    up_taken++;
+                    sBuff = q_up.front(); q_up.pop(); up_taken++;
                 }
                 else if (q_up.front() <= q_down.front()){
-                    sBuff = q_up.front(); q_up.pop();
-                    up_taken++;
+                    sBuff = q_up.front(); q_up.pop(); up_taken++;
                 }
                 else{
-                    sBuff = q_down.front(); q_down.pop();
-                    up_taken--;
+                    sBuff = q_down.front(); q_down.pop(); up_taken--;
                 }
             }
             else if (can_take_down == true){
                 if (q_down.empty()){
                     oneEmpty = true;
                 }else{
-                    sBuff = q_down.front(); q_down.pop();;
-                    up_taken--;
+                    sBuff = q_down.front(); q_down.pop(); up_taken--;
                 }
             }
             else{
@@ -256,8 +239,7 @@ void nth_proces() {
                     oneEmpty = true;
                 }
                 else {
-                    sBuff = q_up.front(); q_up.pop();
-                    up_taken++;
+                    sBuff = q_up.front(); q_up.pop(); up_taken++;
                 }
             }
 
@@ -285,8 +267,7 @@ void nth_proces() {
             else{
                 last = LAST_UP;
             }
-            send = 0;
-            up_taken = 0;
+            send = 0; up_taken = 0;
         } 
     }
 }
@@ -307,13 +288,13 @@ int main(int argc, char *argv[]) {
     if (rank == 0){
         first_proces();
     }
+    // Nth process even the last one 
     else {
         nth_proces();
     }
 
 
     MPI_Finalize();
-
     return 0;
 }
 
