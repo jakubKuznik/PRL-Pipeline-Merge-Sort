@@ -103,11 +103,12 @@ void nth_proces() {
     
     // Condition for the UPPER front to start the process 
     int condition  = pow(2, (rank-1));
-    bool condition_met = false;
 
     // how many numbers are there in total  
     int total_nums      = 0; 
     int accepted_nums   = 0;
+    
+    int up_recieved = 0;
     
 
     MPI_Status status;
@@ -116,24 +117,21 @@ void nth_proces() {
     
     MPI_Bcast(&total_nums, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
+    for (int i = 0; i < condition; i++){
 
-    for (int i = 0; condition_met == false; i++){
-        if (i % 2 == 0){
-            MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
-            q_up.push(rcBuff);
-            accepted_nums++;
-        }
-        else{
-            MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
-            q_down.push(rcBuff);
-            accepted_nums++;
-        }
+        MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
+        q_up.push(rcBuff);
+        accepted_nums++;
+        up_recieved++; 
 
-        if (!q_down.empty() && (q_up.front() >= condition)){
-            condition_met = true;
-            cout << "I am " << rank << " And i'v MET A CONDITION" << endl;
-        }
     }
+    
+    MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
+    q_down.push(rcBuff);
+    accepted_nums++;
+    up_recieved--; 
+    
+    cout << "I am " << rank << " And i'v MET A CONDITION" << endl;
     
     int send = 0;
     int ups = pow (2, (rank-1));
@@ -145,6 +143,7 @@ void nth_proces() {
     bool oneEmpty = false; 
     for (int i = 0; true; i++){
         // last process is prinitng the output 
+        cout << "I am " << rank << " ITERATION 1/2 " << endl;
         if (accepted_nums == total_nums){
             cout << "I am " << rank << " ITERATION 2/2 ALL NUMS " << endl;
             if (q_up.empty() && q_down.empty()){
@@ -154,24 +153,31 @@ void nth_proces() {
         }
         else { // RECIEVE 
             if (accepted_nums < total_nums){
-                if (i % 2 == 0){
+                cout << "I am " << rank << " ITERATION 2/2 " << endl;
+                if (up_recieved == 0){
                     MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
                     accepted_nums++; q_up.push(rcBuff);
+                    up_recieved++;
                 }
                 else {
                     MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
                     accepted_nums++; q_down.push(rcBuff);
+                    up_recieved--; 
                 }
             }
         }
 
         if (send < ups){
+            cout << "I am " << rank << " i am FILLING FIRST PART"  << "count: "
+            << send << " condi: " << static_cast<int>(ups*2) << endl;
             // choose the smaller and remeber which front it was from
             if (q_up.empty()){
+                cout << "I am " << rank << " UP EMPTY TAKING DOWN " << endl;
                 sBuff = q_down.front(); q_down.pop(); 
                 up_taken--;
             }
             else if (q_down.empty()){
+                cout << "I am " << rank << " DOWN EMPTY TAKING UP  " << endl;
                 sBuff = q_up.front(); q_up.pop(); 
                 up_taken++;
             }
@@ -239,8 +245,12 @@ void nth_proces() {
             
             oneEmpty = false; 
             
-            if (can_take_down && can_take_up){
-                if (q_up.front() < q_down.front()){
+            if ((can_take_down == true) && (can_take_up == true)){
+                if (q_up.empty() || q_down.empty()){
+                    cout << "I am " << rank << " can take both but empty queue " << endl;
+                    continue;
+                }
+                if (q_up.front() <= q_down.front()){
                     sBuff = q_up.front(); q_up.pop();
                     up_taken++;
                 }
@@ -249,10 +259,10 @@ void nth_proces() {
                     up_taken--;
                 }
             }
-            else if (can_take_down){
+            else if (can_take_down == true){
                 if (q_down.empty()){
                     oneEmpty = true;
-                    cout << "CAN TAKE DOWN BUT DOWN EMPTY .... up taken:" << 
+                    cout << "I am " << rank << " CAN TAKE DOWN BUT DOWN EMPTY .... up taken:" << 
                     up_taken << " send: " <<  send << " Possible " << ups*2 << endl;
                 }else{
                     sBuff = q_down.front(); q_down.pop();;
