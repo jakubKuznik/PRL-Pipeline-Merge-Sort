@@ -107,9 +107,9 @@ void nth_proces() {
     // how many numbers are there in total  
     int total_nums      = 0; 
     int accepted_nums   = 0;
-    
+
+    // Monitor which front should we recieve number from  
     int up_recieved = 0;
-    
 
     MPI_Status status;
 
@@ -117,13 +117,12 @@ void nth_proces() {
     
     MPI_Bcast(&total_nums, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
+    // met the input condition 
     for (int i = 0; i < condition; i++){
-
         MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
         q_up.push(rcBuff);
         accepted_nums++;
         up_recieved++; 
-
     }
     
     MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
@@ -141,6 +140,7 @@ void nth_proces() {
     int can_take_down = false; 
     int help = 0;
     bool oneEmpty = false; 
+
     for (int i = 0; true; i++){
         // last process is prinitng the output 
         cout << "I am " << rank << " ITERATION 1/2 " << endl;
@@ -246,11 +246,15 @@ void nth_proces() {
             oneEmpty = false; 
             
             if ((can_take_down == true) && (can_take_up == true)){
-                if (q_up.empty() || q_down.empty()){
-                    cout << "I am " << rank << " can take both but empty queue " << endl;
-                    continue;
+                if (q_up.empty()){
+                    sBuff = q_down.front(); q_down.pop();
+                    up_taken--;
                 }
-                if (q_up.front() <= q_down.front()){
+                else if (q_down.empty()){
+                    sBuff = q_up.front(); q_up.pop();
+                    up_taken++;
+                }
+                else if (q_up.front() <= q_down.front()){
                     sBuff = q_up.front(); q_up.pop();
                     up_taken++;
                 }
