@@ -115,7 +115,6 @@ void nth_proces() {
     cout << "I am " << rank << " My condition is: " << condition << endl;
     
     MPI_Bcast(&total_nums, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    cout << "I am " << rank << " TOTAL NUMS ARE: "<< total_nums << endl;
 
 
     for (int i = 0; condition_met == false; i++){
@@ -147,7 +146,9 @@ void nth_proces() {
     int can_take_up = false;
     int can_take_down = false; 
     int help = 0;
+    bool oneEmpty = false; 
     for (int i = 0; true; i++){
+        
         
         // last process is prinitng the output 
         if (accepted_nums == total_nums){
@@ -156,89 +157,21 @@ void nth_proces() {
                 break;
             }
         }
-        if (send < ups){
-            if (!q_up.empty() && !q_down.empty()){
-
-                // choose the smaller and remeber which front it was from
-                if (q_up.front() < q_down.front()){
-                    sBuff = q_up.front(); q_up.pop(); 
-                    up_taken++;
-                }
-                else{
-                    sBuff = q_down.front(); q_down.pop(); 
-                    up_taken--;
-                }
-
-                send++;
-                // IF I AM THE LAST PROCESS     
-                if (rank == size-1){
-                    cout << "I AM LAST, THIS IS RESULT: " << endl;
-                    cout << static_cast<int>(sBuff) << endl;
-                }
-                else{ // else send to next process 
-                    if (last == LAST_UP){
-                        cout << "I am " << rank << " and i am sending " 
-                        << static_cast<int>(sBuff) << " UP to: " << rank+1 << endl;
-                        MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), UP, MPI_COMM_WORLD);
-                    }
-                    if (last == LAST_DOWN){
-                        cout << "I am " << rank << " and i am sending " 
-                        << static_cast<int>(sBuff) << " DOWN to: " << rank+1 << endl;
-                        MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), DOWN, MPI_COMM_WORLD);
-                    }
-                }
-            }
+        else if (q_up.empty() && q_down.empty()){
         }
-        else if (send < (ups * 2)){
-            cout << "I am " << rank << " i am FILLING REST "  << "count: "
-            << send << " condi: " << static_cast<int>(ups*2) << endl;
 
-            help = abs(up_taken);
-
-            cout << "!!! I AM " << rank << " UP TAKEN: " << up_taken << " UPS*2: " 
-            << ups*2 << " send: " << send << endl;
-
-            if (up_taken == 0){
-                can_take_down = true; can_take_up = true; 
-            }
-            // if more are taken from upper front 
-            else if (up_taken > 0){
-                if (help < ((ups*2) - send)){
-                    can_take_up = true; can_take_down = true;
-                    cout << "!!! I AM " << rank << " I CAN TAKE BOTH " << endl;
-                }
-                else{
-                    can_take_down = true; can_take_up = false; 
-                    cout << "!!! I AM " << rank << " I CAN TAKE DOWN" << endl;
-                }
-            }
-            else {
-                if (help < ((ups*2) - send)){   
-                    can_take_down = true; can_take_up = true; 
-                    cout << "!!! I AM " << rank << " I CAN TAKE BOTH " << endl;
-                }
-                else{
-                    can_take_down = false; can_take_up = true; 
-                    cout << "!!! I AM " << rank << " I CAN TAKE UP" << endl;
-                }
-            }
-            
-            if (can_take_down && can_take_up){
-                if (q_up.front() < q_down.front()){
-                    sBuff = q_up.front(); q_up.pop();
-                }
-                else{
-                    sBuff = q_down.front(); q_down.pop();
-                }
-            }
-            else if (can_take_down){
-                sBuff = q_down.front(); q_down.pop();;
+        if (send < ups){
+            // choose the smaller and remeber which front it was from
+            if (q_up.front() < q_down.front()){
+                sBuff = q_up.front(); q_up.pop(); 
+                up_taken++;
             }
             else{
-                sBuff = q_up.front(); q_up.pop();
+                sBuff = q_down.front(); q_down.pop(); 
+                up_taken--;
             }
-            send++;
 
+            send++;
             // IF I AM THE LAST PROCESS     
             if (rank == size-1){
                 cout << "I AM LAST, THIS IS RESULT: " << endl;
@@ -257,6 +190,99 @@ void nth_proces() {
                 }
             }
         }
+        else if (send < (ups * 2)){
+            cout << "I am " << rank << " i am FILLING REST "  << "count: "
+            << send << " condi: " << static_cast<int>(ups*2) << endl;
+
+            help = abs(up_taken);
+
+            cout << "!!! I AM " << rank << " UP TAKEN: " << up_taken << " UPS*2: " 
+            << ups*2 << " send: " << send << endl;
+
+            if (up_taken == 0){
+                can_take_down = true; can_take_up = true; 
+            }
+            // if more are taken from upper front 
+            else if (up_taken > 0){
+                if (((ups*2) - send - help) > 0){
+                    can_take_up = true; can_take_down = true;
+                    cout << "!!! I AM " << rank << " I CAN TAKE BOTH " << endl;
+                }
+                else{
+                    can_take_down = true; can_take_up = false; 
+                    cout << "!!! I AM " << rank << " I CAN TAKE DOWN" << endl;
+                }
+            }
+            else {
+                if (((ups*2) - send - help) > 0){   
+                    can_take_down = true; can_take_up = true; 
+                    cout << "!!! I AM " << rank << " I CAN TAKE BOTH " << endl;
+                }
+                else{
+                    can_take_down = false; can_take_up = true; 
+                    cout << "!!! I AM " << rank << " I CAN TAKE UP" << endl;
+                }
+            }
+            
+            oneEmpty = false; 
+            
+            if (can_take_down && can_take_up){
+                if (q_up.front() < q_down.front()){
+                    sBuff = q_up.front(); q_up.pop();
+                    up_taken++;
+                }
+                else{
+                    sBuff = q_down.front(); q_down.pop();
+                    up_taken--;
+                }
+            }
+            else if (can_take_down){
+                if (q_down.empty()){
+                    oneEmpty = true;
+                    cout << "CAN TAKE DOWN BUT DOWN EMPTY .... up taken:" << 
+                    up_taken << " send: " <<  send << " Possible " << ups*2 << endl;
+                }else{
+                    sBuff = q_down.front(); q_down.pop();;
+                    up_taken--;
+                }
+            }
+            else{
+                if (q_up.empty()){
+                    oneEmpty = true;
+                    cout << "CAN TAKE UP BUT DOWN EMPTY .... up taken:" << 
+                    up_taken << " send: " <<  send << " Possible: " << ups*2 << endl;
+                }
+                else {
+                    sBuff = q_up.front(); q_up.pop();
+                    up_taken++;
+                }
+            }
+
+            if (oneEmpty == false){
+                // IF I AM THE LAST PROCESS     
+                if (rank == size-1){
+                    cout << "I AM LAST, THIS IS RESULT: " << endl;
+                    cout << static_cast<int>(sBuff) << endl;
+                    send++;
+                }
+                else{ // else send to next process 
+                    if (last == LAST_UP){
+                        cout << "I am " << rank << " and i am sending " 
+                        << static_cast<int>(sBuff) << " UP to: " << rank+1 << endl;
+                        MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), UP, MPI_COMM_WORLD);
+                    }
+                    if (last == LAST_DOWN){
+                        cout << "I am " << rank << " and i am sending " 
+                        << static_cast<int>(sBuff) << " DOWN to: " << rank+1 << endl;
+                        MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), DOWN, MPI_COMM_WORLD);
+                    }
+                    send++;
+                }
+            }
+            else{
+                goto getNum;
+            }
+        }
         else {
             if (last == LAST_UP){
                 last = LAST_DOWN;
@@ -268,7 +294,7 @@ void nth_proces() {
             up_taken = 0;
             continue;
         } 
-
+getNum:
         if (accepted_nums < total_nums){
             // RECIEVE 
             if (i % 2 == 0){
@@ -285,6 +311,7 @@ void nth_proces() {
             }
 
         }
+
 
     }
 
