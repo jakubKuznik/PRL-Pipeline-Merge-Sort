@@ -69,15 +69,15 @@ void first_proces(){
         sBuff = static_cast<uint8_t>(c);
         cout << static_cast<int>(sBuff) << " " << endl;
         cout << static_cast<int>(sBuff) << endl;
+        return;
     }
-
     
     // parse the input numbers and send then to the second process 
     for (int i = 0; file.get(c); i++){
         sBuff = static_cast<uint8_t>(c);
         total_nums++;
         // results 
-        // cout << static_cast<int>(sBuff) << " " << endl;
+        cout << static_cast<int>(sBuff) << " ";
         if (i % 2 == 0){
             cout << "I am FIRST and i am sending " << static_cast<int>(sBuff) << " UP to " << rank+1 << std::endl;
             MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), UP, MPI_COMM_WORLD);
@@ -87,13 +87,14 @@ void first_proces(){
             MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), DOWN, MPI_COMM_WORLD);
         }
     }
-    int event = 0; // Event to be broadcasted
+    cout << endl; 
+    
+
     // Broadcast the event from process 0 to all other processes
     MPI_Bcast(&total_nums, 1,MPI_INT, 0, MPI_COMM_WORLD);
 
     file.close();
     
-    // after everything sent speciall signal to shut down everyone
 }
 
 /**
