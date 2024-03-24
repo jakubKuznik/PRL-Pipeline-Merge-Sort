@@ -42,9 +42,12 @@ void first_proces(){
     uint8_t sBuff;
     
     // get my rank 
-    int rank;
+    int rank, size;
     
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    
+    // get the number of process 
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
     
     std::cout << "I am ZERO " << rank << std::endl;
 
@@ -58,9 +61,18 @@ void first_proces(){
         std::cerr << "Error opening file numbers" << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
+
+    char c;
+    // If there is only one number 
+    if (rank == size-1){
+        file.get(c);
+        sBuff = static_cast<uint8_t>(c);
+        cout << static_cast<int>(sBuff) << " " << endl;
+        cout << static_cast<int>(sBuff) << endl;
+    }
+
     
     // parse the input numbers and send then to the second process 
-    char c;
     for (int i = 0; file.get(c); i++){
         sBuff = static_cast<uint8_t>(c);
         total_nums++;
