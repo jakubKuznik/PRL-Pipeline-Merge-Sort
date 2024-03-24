@@ -17,6 +17,7 @@ input and output fronts
 #include <fstream>
 #include <queue>
 #include "mpi.h"
+#include <cmath>
 
 #define FILENUMS "numbers"
 #define UP 1
@@ -28,6 +29,8 @@ using namespace std;
  * This is the first process that will read the 
  * random numbers from the file FILENUMS. The process 
  * will then put the value alternately to two output fronts 
+ * 
+ * Also first process prints the input number array separated by spaces 
  */
 void first_proces(){
     
@@ -39,7 +42,9 @@ void first_proces(){
     
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     
-    std::cout << "I am FIRST " << std::endl;
+    std::cout << "I am ZERO " << rank << std::endl;
+
+    int total_nums = 0; 
 
     // Open the file     
     std::ifstream file;
@@ -54,22 +59,31 @@ void first_proces(){
     char c;
     for (uint8_t i = 0; file.get(c); i++){
         sBuff = static_cast<uint8_t>(c);
+        total_nums++;
+        // results 
+        // cout << static_cast<int>(sBuff) << " " << endl;
         if (i % 2 == 0){
+            cout << "I am FIRST and i am sending " << static_cast<int>(sBuff) << " UP to " << rank+1 << std::endl;
             MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), UP, MPI_COMM_WORLD);
         }
         else{
+            cout << "I am FIRST and i am sending " << static_cast<int>(sBuff) << " DOWN to " << rank+1 << std::endl;
             MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), DOWN, MPI_COMM_WORLD);
         }
     }
+    int event = 0; // Event to be broadcasted
+    // Broadcast the event from process 0 to all other processes
+    MPI_Bcast(&total_nums, 1,MPI_INT, 0, MPI_COMM_WORLD);
 
     file.close();
     
     // after everything sent speciall signal to shut down everyone
-
-
-    return;    
 }
 
+/**
+ * This contains logic of the nth process. 
+ * LAST PROCESS IS printing the output  
+ */
 void nth_proces() {
     
     std::queue<uint8_t> q_up; 
@@ -81,38 +95,62 @@ void nth_proces() {
     int up_taken     = 0;
     int down_taken   = 0; 
 
-    int rank;
+    int rank, size;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     
     // Condition for the UPPER front to start the process 
-    uint8_t condition  = 2^(rank-1);
+    int condition  = pow(2, (rank-1));
     bool condition_met = false;
+
+    // how many numbers are there in total  
+    int total_nums      = 0; 
+    int accepted_nums   = 0;
     
+
     MPI_Status status;
 
-    cout << "I am " << rank << endl;
+    cout << "I am " << rank << " My condition is: " << condition << endl;
+    
+    MPI_Bcast(&total_nums, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    cout << "I am " << rank << " TOTAL NUMS ARE: "<< total_nums << endl;
 
-    for (uint8_t i = 0; condition_met; i++){
+
+    for (uint8_t i = 0; condition_met == false; i++){
         if (i % 2 == 0){
-            MPI_Recv(&rcBuff, 1, MPI_BYTE, rank, UP, MPI_COMM_WORLD, &status);
+            cout << "I am " << rank << " AND I AM WAITING ON UP" << endl;
+            MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
             q_up.push(rcBuff);
+            accepted_nums++;
+            cout << "I am " << rank << " And if got UP num" << endl;
         }
         else{
-            MPI_Recv(&rcBuff, 1, MPI_BYTE, rank, DOWN, MPI_COMM_WORLD, &status);
+            MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
             q_down.push(rcBuff);
+            accepted_nums++;
+            cout << "I am " << rank << " And if got down num" << endl;
         }
 
-        if (!q_down.empty() && (q_up.front() == condition)){
-            condition_met = true; 
+        if (!q_down.empty() && (q_up.front() >= condition)){
+            condition_met = true;
+            cout << "I am " << rank << " And i'v MET A CONDITION" << endl;
         }
     }
+    
+    std::cout.flush();
+    cout << "I am " << rank << " I v accepted:" << static_cast<int>(accepted_nums) << endl;
 
     int count = 0;
     for (uint8_t i = 0; true; i++){
+        // last process is prinitng the output 
+        
         // SEND 
         if (count < condition){
+            cout << "I am " << rank << " i am CHOOSING SMALLER "  << "count: "
+            << count << " condi: " << static_cast<int>(condition) << endl;
             // choose the bigger and remeber which front it was from 
-            if (q_up.front() > q_down.front()){
+            if (q_up.front() < q_down.front()){
                 up_taken++;
                 sBuff = q_up.front();
                 q_up.pop();
@@ -122,10 +160,21 @@ void nth_proces() {
                 sBuff = q_down.front();
                 q_down.pop();
             }
-            MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), UP, MPI_COMM_WORLD);
+            cout << "I am " << rank << " and i am sending " << static_cast<int>(sBuff) << " UP to: " << rank+1 << endl;
+
+            // IF I AM THE LAST PROCESS     
+            if (rank == size-1){
+                cout << "I AM LAST, THIS IS RESULT: " << endl;
+                cout << static_cast<int>(sBuff) << endl;
+            }
+            else{ // else send to next process 
+                MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), UP, MPI_COMM_WORLD);
+            }
 
         }
         else if (count < (condition * 2)){
+            cout << "I am " << rank << " i am FILLING REST "  << "count: "
+            << count << " condi: " << static_cast<int>(condition) << endl;
             if ((up_taken == down_taken) || (up_taken < down_taken)){
                 sBuff = q_up.front();
                 q_up.pop();
@@ -136,8 +185,15 @@ void nth_proces() {
                 q_down.pop();
                 down_taken++;
             }
-            
-            MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), DOWN, MPI_COMM_WORLD);
+            // IF I AM THE LAST PROCESS     
+            if (rank == size-1){
+                cout << "I AM LAST, THIS IS RESULT: " << endl;
+                cout << static_cast<int>(sBuff) << endl;
+            }
+            else{ // else send to next process 
+                cout << "I am " << rank << " and i am sending " << static_cast<int>(sBuff) << " DOWN to: " << rank+1 << endl;
+                MPI_Send(&sBuff, 1, MPI_BYTE, (rank+1), DOWN, MPI_COMM_WORLD);
+            }
         }
         else {
             up_taken    = 0;
@@ -146,13 +202,18 @@ void nth_proces() {
             continue;
         } 
 
+
         // RECIEVE 
         if (i % 2 == 0){
-            MPI_Recv(&rcBuff, 1, MPI_BYTE, rank, UP, MPI_COMM_WORLD, &status);
+            MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, UP, MPI_COMM_WORLD, &status);
+            accepted_nums++;
+            cout << "I am " << rank << " AND I AM WAITING ON UP" << endl;
             q_up.push(rcBuff);
         }
         else {
-            MPI_Recv(&rcBuff, 1, MPI_BYTE, rank, DOWN, MPI_COMM_WORLD, &status);
+            MPI_Recv(&rcBuff, 1, MPI_BYTE, rank-1, DOWN, MPI_COMM_WORLD, &status);
+            accepted_nums++;
+            cout << "I am " << rank << " And if got down num" << endl;
             q_down.push(rcBuff);
         }
         count++;
@@ -160,11 +221,6 @@ void nth_proces() {
     }
 
     
-}
-
-void last_proces() {
-    cout << "I am LAST" << endl;
-
 }
 
 
@@ -177,21 +233,19 @@ int main(int argc, char *argv[]) {
     // get the number of process 
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+    cout <<  "THERE ARE: " << size << " Process " << endl;
+
     // get current procces id 
     // MPI_COMM_WORLD - prediefined constant to match all the processes  
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    if (rank == 1){
+    if (rank == 0){
         first_proces();
-    }
-    else if (rank == (size-1)){
-        last_proces();
     }
     else {
         nth_proces();
     }
 
-    cout << "I am " << rank << " of " << size << endl;
 
     MPI_Finalize();
 
