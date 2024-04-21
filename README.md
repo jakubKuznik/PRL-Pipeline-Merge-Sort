@@ -1,5 +1,5 @@
 # PRL-Pipeline-Merge-Sor
-## Faculty: BUT FIT, Course: FLP t
+## Faculty: BUT FIT, Course: PRL
 
 
 ## Compilation 
